@@ -1,0 +1,243 @@
+<h1>買い物リスト</h1>
+
+<a href="/add/">商品を追加</a> |
+<a href="/category/add/">カテゴリを追加</a>
+
+<style>
+  /* タブ全体 */
+  .tabs {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+    position: sticky;
+    top: 0;
+    background: white;
+    padding: 10px 0;
+    z-index: 1000;
+    overflow-x: auto;
+  }
+
+  /* タブ */
+  .tab {
+    padding: 10px 18px;
+    background: #f0f0f0;
+    border-radius: 20px;
+    cursor: pointer;
+    border: 1px solid #ddd;
+    transition: 0.2s;
+    white-space: nowrap;
+  }
+
+  .tab.active {
+    background: #4CAF50;
+    color: white;
+    border-color: #4CAF50;
+    font-weight: bold;
+  }
+
+  /* カテゴリ削除ボタン */
+  .delete-category {
+    color: #ff4d4d;
+    font-size: 20px;
+    padding: 0 5px;
+    text-decoration: none;
+    font-weight: bold;
+  }
+
+  /* カテゴリ編集リンク */
+  .edit-category {
+    font-size: 14px;
+    margin-left: 3px;
+  }
+
+  /* カテゴリブロック */
+  .category-block {
+    display: none;
+  }
+
+  .category-block.active {
+    display: block;
+  }
+
+  /* リストデザイン */
+  li {
+    background: #fafafa;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .item-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* メモ折りたたみ */
+  .memo-toggle {
+    font-size: 14px;
+    color: #007bff;
+    cursor: pointer;
+    margin-left: 35px;
+  }
+
+  .memo-content {
+    display: none;
+    font-size: 14px;
+    color: #555;
+    margin-left: 35px;
+    margin-top: 5px;
+    padding: 8px;
+    background: #f7f7f7;
+    border-radius: 5px;
+  }
+
+  /* スマホ対応 */
+  @media (max-width: 600px) {
+    h1 {
+      font-size: 22px;
+      text-align: center;
+    }
+
+    .tabs {
+      overflow-x: auto;
+      white-space: nowrap;
+      padding-bottom: 10px;
+    }
+
+    .tab {
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+
+    li {
+      font-size: 16px;
+      padding: 12px;
+    }
+
+    input[type="checkbox"] {
+      width: 24px;
+      height: 24px;
+    }
+  }
+</style>
+
+<!-- タブ表示 -->
+<div class="tabs">
+  {% for category in categories %}
+    <div style="display:flex; align-items:center; gap:5px;">
+      <div class="tab" data-target="cat-{{ category.id }}">
+        {{ category.name }}
+      </div>
+      <a class="delete-category" href="/category/delete/{{ category.id }}/">×</a>
+      <a class="edit-category" href="/category/edit/{{ category.id }}/">編集</a>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- カテゴリごとのリスト -->
+{% for category in categories %}
+  <div id="cat-{{ category.id }}" class="category-block">
+    <h2>{{ category.name }}</h2>
+    <ul>
+      {% for item in items %}
+        {% if item.category == category %}
+          <li>
+            <div class="item-row">
+              <form action="/toggle/{{ item.id }}/" method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="checkbox" onchange="this.form.submit()" {% if item.is_done %}checked{% endif %}>
+              </form>
+
+              {% if item.is_done %}
+                <span style="text-decoration: line-through; color: gray;">{{ item.name }}</span>
+              {% else %}
+                {{ item.name }}
+              {% endif %}
+
+              <a href="/delete/{{ item.id }}/">削除</a>
+              <a href="/edit/{{ item.id }}/">編集</a>
+            </div>
+
+            {% if item.memo %}
+              <div class="memo-toggle" onclick="toggleMemo('{{ item.id }}')">
+                メモを表示 ▼
+              </div>
+
+              <div id="memo-{{ item.id }}" class="memo-content">
+                {{ item.memo }}
+              </div>
+            {% endif %}
+          </li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  </div>
+{% endfor %}
+
+<script>
+  const tabs = document.querySelectorAll('.tab');
+  const blocks = document.querySelectorAll('.category-block');
+
+  // 最初のタブをアクティブにする
+  if (tabs.length > 0) {
+    tabs[0].classList.add('active');
+    blocks[0].classList.add('active');
+  }
+
+  // タブクリックで切り替え
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      blocks.forEach(b => b.classList.remove('active'));
+
+      tab.classList.add('active');
+      const target = tab.getAttribute('data-target');
+      document.getElementById(target).classList.add('active');
+    });
+  });
+
+  /* スワイプでカテゴリ切り替え */
+  let startX = 0;
+
+  document.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX;
+  });
+
+  document.addEventListener('touchend', (e) => {
+    const endX = e.changedTouches[0].clientX;
+    const diff = endX - startX;
+
+    if (Math.abs(diff) > 50) {
+      const activeIndex = [...tabs].findIndex(t => t.classList.contains('active'));
+
+      if (diff < 0 && activeIndex < tabs.length - 1) {
+        tabs[activeIndex + 1].click();
+      } else if (diff > 0 && activeIndex > 0) {
+        tabs[activeIndex - 1].click();
+      }
+    }
+  });
+
+  /* メモ折りたたみ */
+  function toggleMemo(id) {
+    const memo = document.getElementById(`memo-${id}`);
+    const toggle = memo.previousElementSibling;
+
+    if (memo.style.display === "block") {
+      memo.style.display = "none";
+      toggle.textContent = "メモを表示 ▼";
+    } else {
+      memo.style.display = "block";
+      toggle.textContent = "メモを非表示 ▲";
+    }
+  }
+</script>

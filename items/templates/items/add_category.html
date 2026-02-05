@@ -1,0 +1,41 @@
+<h1>カテゴリを追加</h1>
+
+<form action="" method="post">
+  {% csrf_token %}
+
+  <label>カテゴリ名</label>
+  <input type="text" name="name" required>
+
+  <button type="submit">追加</button>
+</form>
+
+<a href="/">戻る</a>
+
+<style>
+  @media (max-width: 600px) {
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      padding: 20px;
+    }
+
+    input, button {
+      font-size: 18px;
+      padding: 12px;
+      border-radius: 8px;
+    }
+
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+    }
+
+    a {
+      display: inline-block;
+      margin-top: 15px;
+      font-size: 18px;
+    }
+  }
+</style>
